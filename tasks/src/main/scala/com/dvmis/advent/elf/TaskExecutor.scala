@@ -1,7 +1,7 @@
 package com.dvmis.advent.elf
 
 object TaskExecutor extends App {
-  val task: Task = new Task4
+  val task: Task = new Task6
 
   task.execute()
 }
