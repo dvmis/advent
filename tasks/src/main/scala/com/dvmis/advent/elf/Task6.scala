@@ -20,7 +20,11 @@ object Task6 {
 
   def readLine(): Option[String] = Option(StdIn.readLine()) map (_.trim)
 
-  def evalGroup(xs: Seq[String]): Int = (xs map (_.toSet) reduce (_ intersect _) map weightOf).sum
+  def evalGroup(xs: Seq[String]): Int =
+    (xs map (_.toSet) reduce (_ intersect _) map weightOf).sum
 
-  def weightOf(c: Char): Int = if (c.isLower) c - 'a' + 1 else if (c.isUpper) c - 'A' + 27 else 0
+  def weightOf(c: Char): Int =
+    if (c.isLower) c - 'a' + 1
+    else if (c.isUpper) c - 'A' + 27
+    else 0
 }
