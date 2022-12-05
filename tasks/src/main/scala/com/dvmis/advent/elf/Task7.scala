@@ -21,25 +21,25 @@ class Task8 extends Task {
 }
 
 object Task7 {
-  case class SecRange(from: Int, to: Int) {
-    def contains(other: SecRange): Boolean = from <= other.from && to >= other.to
+  case class IntRange(from: Int, to: Int) {
+    def contains(other: IntRange): Boolean = from <= other.from && to >= other.to
     def contains(x: Int): Boolean = from <= x && x <= to
-    def overlaps(other: SecRange): Boolean =
+    def overlaps(other: IntRange): Boolean =
       (List(other.from, other.to) exists contains) || (List(from, to) exists other.contains)
   }
 
   @tailrec
-  def eval(f: (SecRange, SecRange) => Boolean, res: Int = 0): Int =
+  def eval(f: (IntRange, IntRange) => Boolean, res: Int = 0): Int =
     readLine() match {
       case Some(range) => if (f.tupled(range)) eval(f, res + 1) else eval(f, res)
       case None => res
     }
 
-  def readLine(): Option[(SecRange, SecRange)] =
+  def readLine(): Option[(IntRange, IntRange)] =
     Option(StdIn.readLine()) flatMap (l => Try(parseRanges(l)).toOption)
 
-  def parseRanges(s: String): (SecRange, SecRange) = {
+  def parseRanges(s: String): (IntRange, IntRange) = {
     val Array(x1, y1, x2, y2) = s.split("[-,]") map (_.toInt)
-    (SecRange(x1, y1), SecRange(x2, y2))
+    (IntRange(x1, y1), IntRange(x2, y2))
   }
 }
