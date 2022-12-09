@@ -34,20 +34,21 @@ object Task13 {
     import model._
     import parser._
 
-    def evalSum(maxSize: NodeSize): NodeSize = findDirs(readFs(), Vector.empty, maxSize)._1.map(_._2).sum
+    def evalSum(maxSize: NodeSize): NodeSize =
+      (findDirs(readFs(), Vector.empty)._1 collect { case (_, size) if size <= maxSize => size }).sum
 
     def evalMin(storageSize: NodeSize, requiredSize: NodeSize): NodeSize = {
-      val (dirs, totalSize) = findDirs(readFs(), Vector.empty, Long.MaxValue)
+      val (dirs, totalSize) = findDirs(readFs(), Vector.empty)
       val sizeToFree = requiredSize - (storageSize - totalSize)
       (dirs map (_._2) filter (_ >= sizeToFree)).min
     }
 
-    def findDirs(node: Node, parentPath: Path, maxSize: NodeSize): (Seq[(Path, NodeSize)], NodeSize) =
+    def findDirs(node: Node, parentPath: Path): (Seq[(Path, NodeSize)], NodeSize) =
       node.info match {
         case FileInfo(size) => (Nil, size)
         case DirInfo(entries) =>
           val path = parentPath :+ node.name
-          val (results, size) = entries.map(findDirs(_, path, maxSize))
+          val (results, size) = entries.map(findDirs(_, path))
             .foldLeft((Vector.empty[(Path, NodeSize)], 0L)) { case ((xs, x), (ys, y)) => (xs ++ ys, x + y) }
           (results :+ (path, size), size)
       }
@@ -57,13 +58,11 @@ object Task13 {
     import model._
 
     type DirsMap = Map[String, Seq[DirEntry]]
+
     case class DirEntry(name: String, size: Option[Long])
 
     object command {
-      val CdRoot: Regex = "\\$ cd /".r
-      val CdUp: Regex  = "\\$ cd \\.\\.".r
-      val CdDown: Regex  = "\\$ cd (.+)".r
-
+      val Cd: Regex = "\\$ cd ([^\\s]+)".r
       val Ls: Regex = "\\$ ls".r
     }
 
@@ -72,7 +71,7 @@ object Task13 {
       val Dir: Regex = "dir (.+)".r
     }
 
-    def readFs(): Node = mkNode(parse(new InputReader, Vector.empty, Map.empty))
+    def readFs(): Node = mkNode(runCommand(new InputReader, Vector.empty, Map.empty))
 
     def mkNode(dirs: DirsMap, path: String = ""): Node =
       FsNode(path.split("/").last, DirInfo(
@@ -82,24 +81,35 @@ object Task13 {
         }))
 
     @tailrec
-    def parse(reader: InputReader, path: Vector[String], dirs: DirsMap): DirsMap =
+    def runCommand(reader: InputReader, path: Vector[String], dirs: DirsMap): DirsMap = {
+      import command._
+
       reader.getLine match {
-        case Some(command.CdRoot()) => parse(reader.next(), Vector.empty, dirs)
-        case Some(command.CdUp()) => parse(reader.next(), path dropRight 1, dirs)
-        case Some(command.CdDown(dirname)) => parse(reader.next(), path :+ dirname, dirs)
-        case Some(command.Ls()) =>
-          val (r, xs) = readDir(reader.next())
-          parse(r, path, dirs + ((path mkString "/", xs)))
+        case Some(Cd(dirname)) => runCommand(reader.next(), changePath(path, dirname), dirs)
+        case Some(Ls()) =>
+          val (r, es) = readEntries(reader.next())
+          runCommand(r, path, dirs + ((path mkString "/", es)))
         case _ => dirs
+      }
+    }
+
+    def changePath(path: Vector[String], dirname: String): Vector[String] =
+      dirname match {
+        case "/" => Vector.empty
+        case ".." => path dropRight 1
+        case _ => path :+ dirname
       }
 
     @tailrec
-    def readDir(reader: InputReader, result: Seq[DirEntry] = Vector.empty): (InputReader, Seq[DirEntry]) =
+    def readEntries(reader: InputReader, entries: Seq[DirEntry] = Vector.empty): (InputReader, Seq[DirEntry]) = {
+      import output._
+
       reader.getLine match {
-        case Some(output.File(size, name)) => readDir(reader.next(), result :+ DirEntry(name, Some(size.toLong)))
-        case Some(output.Dir(name)) => readDir(reader.next(), result :+ DirEntry(name, None))
-        case _ => (reader, result)
+        case Some(File(size, name)) => readEntries(reader.next(), entries :+ DirEntry(name, Some(size.toLong)))
+        case Some(Dir(name)) => readEntries(reader.next(), entries :+ DirEntry(name, None))
+        case _ => (reader, entries)
       }
+    }
 
     class InputReader {
       lazy val getLine: Option[String] = Option(StdIn.readLine())
